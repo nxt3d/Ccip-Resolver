@@ -22,11 +22,12 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
     struct CcipVerifier {
         string[] gatewayUrls;
         ICcipResponseVerifier verifierAddress;
+        bytes nameOnL2;
     }
     /**
      * The idnetifier to store the default verifier
      */
-    bytes32 private constant DEFAULT_VERIFIER = bytes32(0);
+    bytes32 private constant ROOT_NODE = bytes32(0);
 
     /*
      *   --------------------------------------------------
@@ -34,7 +35,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      *   --------------------------------------------------
      */
 
-    event VerifierAdded(bytes32 indexed node, address verifierAddress, string[] gatewayUrls);
+    event VerifierAdded(bytes32 indexed node, address verifierAddress, string[] gatewayUrls, bytes nameOnL2);
     /*
      *   --------------------------------------------------
      *    Errors
@@ -77,7 +78,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
          *
          */
         if (_defaultVerifier != address(0)) {
-            _setVerifierForDomain(DEFAULT_VERIFIER, _defaultVerifier, _gatewayUrls);
+            _setVerifierForName(ROOT_NODE, _defaultVerifier, _gatewayUrls, bytes(""));
         }
     }
 
@@ -93,13 +94,13 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      * @param verifierAddress The address of the CcipResponseVerifier contract.
      * @param urls The gateway url that should handle the OffchainLookup.
      */
-    function setVerifierForDomain(bytes32 node, address verifierAddress, string[] memory urls) external {
+    function setVerifierForName(bytes32 node, address verifierAddress, string[] memory urls, bytes memory nameOnL2) external {
         /*
          * Only the node owner can set the verifier for a node. NameWrapper profiles are supported too.
          */
         require(node != bytes32(0), "node is 0x0");
         require(msg.sender == getNodeOwner(node), "only node owner");
-        _setVerifierForDomain(node, verifierAddress, urls);
+        _setVerifierForName(node, verifierAddress, urls, nameOnL2);
     }
 
     /**
@@ -113,7 +114,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
          * Get the verifier for the given name.
          * reverts if no verifier was set in advance
          */
-        (CcipVerifier memory _verifier, bytes32 node) = getVerifierOfDomain(name);
+        (CcipVerifier memory _verifier, bytes32 node) = getVerifierOfName(name);
         /*
          * Retrieves the owner of the node. NameWrapper profiles are supported too. This will be the context of the request.
          */
@@ -154,7 +155,20 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
          * Get the verifier for the given name.
          * reverts if no verifier was set in advance
          */
-        (CcipVerifier memory _ccipVerifier, ) = getVerifierOfDomain(name);
+        (CcipVerifier memory _ccipVerifier, ) = getVerifierOfName(name);
+
+        // Get the L2 2LD name that we are using. 
+        bytes memory nameOnL2 = _ccipVerifier.nameOnL2;
+
+        // If the nameOnL2 is set.
+        if (nameOnL2.length < 0) {
+
+            // Remove that last two labels of the name in DNS format. 
+
+
+
+        }
+
         /*
          * to enable the ERC3668Resolver to return data other than bytes it might be possible to override the
          * resolvewithProofCallback function.
@@ -181,6 +195,55 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         return resolveWithProofResponse;
     }
 
+    // A function called remove 2LD. 
+    function replace2LDTLD(bytes memory name, bytes memory new2LD) internal pure returns (bytes memory) {
+
+        // Step through each label and save the last two labels.
+        uint256 offset = 0;
+        uint256 lastOffset = 0;
+        uint256 secondLastOffset = 0;
+        uint256 thirdLastOffset = 0;
+
+        // The length of the label.
+        uint256 len;
+
+        // Get the offsets of the last two labels.
+        while (offset < name.length-1) {
+
+            len = uint256(uint8(name[offset]));
+            thirdLastOffset = secondLastOffset;
+            secondLastOffset = lastOffset;
+            lastOffset = offset + len + 1;
+
+            // jump to the next label.
+            offset = lastOffset;
+        }   
+
+        // Remove the last two labels by looping through the name and copying the bytes
+        // until we get to the second last offset.
+
+        // reset offset to the start of the name.
+        uint256 i;
+        bytes memory newName = new bytes(thirdLastOffset + new2LD.length);
+
+        /**
+         * Make a new name that is the combination of the name without the 2LD and TLD
+         * and the new2LD */
+
+        while (i < newName.length) {
+
+            if (i <= thirdLastOffset) {
+                newName[i] = name[i];
+            } else {
+                newName[i] = new2LD[i - thirdLastOffset];
+            }
+            i++;
+        }
+
+        // Return the name without the last two labels.
+        return newName;
+    }
+
     /**
      * @notice Get metadata about the CCIP Resolver
      * @dev This function provides metadata about the CCIP Resolver, including its name, coin type, GraphQL URL, storage type, and encoded information.
@@ -199,7 +262,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
          * Get the verifier for the given name.
          * reverts if no verifier was set in advance
          */
-        (CcipVerifier memory _ccipVerifier, ) = getVerifierOfDomain(name);
+        (CcipVerifier memory _ccipVerifier, ) = getVerifierOfName(name);
 
         /*
          * Get the metadata from the verifier contract
@@ -235,8 +298,8 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      * @return _ccipVerifier The CCIP Verifier associated with the given domain name
      * @return node The node associated with the given domain name
      */
-    function getVerifierOfDomain(bytes memory name) public view returns (CcipVerifier memory, bytes32) {
-        return getVerifierOfSegment(name, 0, name.namehash(0));
+    function getVerifierOfName(bytes memory name) public view returns (CcipVerifier memory, bytes32) {
+        return getVerifierOfLabel(name, 0, name.namehash(0));
     }
 
     /**
@@ -281,7 +344,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      * @param verifierAddress The address of the CcipResponseVerifier contract.
      * @param urls The gateway url that should handle the OffchainLookup.
      */
-    function _setVerifierForDomain(bytes32 node, address verifierAddress, string[] memory urls) private {
+    function _setVerifierForName(bytes32 node, address verifierAddress, string[] memory urls, bytes memory _nameOnL2) private {
         require(verifierAddress != address(0), "verifierAddress is 0x0");
         /*
          * We're doing a staticcall here to check if the verifierAddress implements the ICcipResponseVerifier interface.
@@ -308,10 +371,10 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         /*
          * Set the new verifier for the given node.
          */
-        CcipVerifier memory _ccipVerifier = CcipVerifier(urls, ICcipResponseVerifier(verifierAddress));
+        CcipVerifier memory _ccipVerifier = CcipVerifier(urls, ICcipResponseVerifier(verifierAddress), _nameOnL2);
         ccipVerifier[node] = _ccipVerifier;
 
-        emit VerifierAdded(node, verifierAddress, urls);
+        emit VerifierAdded(node, verifierAddress, urls, _nameOnL2);
     }
 
     /**
@@ -327,7 +390,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      *         It checks if a verifier is set for the current node, and if not, it continues with the next label.
      *         If the end of the name is reached and no verifier is found, it reverts with an UnknownVerifier error.
      */
-    function getVerifierOfSegment(
+    function getVerifierOfLabel(
         bytes memory name,
         uint256 offset,
         bytes32 node
@@ -339,7 +402,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
             /*
              *If no specific verifier is set for the given node, we return the default verifier
              */
-            CcipVerifier memory defaultCcipVerifier = ccipVerifier[DEFAULT_VERIFIER];
+            CcipVerifier memory defaultCcipVerifier = ccipVerifier[ROOT_NODE];
             return (defaultCcipVerifier, name.namehash(0));
         }
 
@@ -354,6 +417,6 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
          * Otherwise, continue with the next label
          */
         (, offset) = name.readLabel(offset);
-        return getVerifierOfSegment(name, offset, name.namehash(offset));
+        return getVerifierOfLabel(name, offset, name.namehash(offset));
     }
 }

@@ -110,13 +110,15 @@ describe('ERC3668Resolver Test', () => {
         );
     });
 
-    describe('setVerifierForDomain', () => {
+    describe('setVerifierForName', () => {
         it('reverts if resolverAddress is 0x0', async () => {
             await erc3668Resolver
                 .connect(alice)
-                .setVerifierForDomain(ethers.utils.namehash('alice.eth'), ethers.constants.AddressZero, [
+                .setVerifierForName(ethers.utils.namehash('alice.eth'), ethers.constants.AddressZero, [
                     'http://localhost:8080/{sender}/{data}',
-                ])
+                ],
+                ethers.utils.toUtf8Bytes(''),
+                )
                 .then(res => {
                     expect.fail('Should have thrown an error');
                 })
@@ -126,9 +128,10 @@ describe('ERC3668Resolver Test', () => {
         });
         it('reverts if msg.sender is not the profile owner', async () => {
             await erc3668Resolver
-                .setVerifierForDomain(ethers.utils.namehash('vitalik.eth'), bedrockCcipVerifier.address, [
+                .setVerifierForName(ethers.utils.namehash('vitalik.eth'), bedrockCcipVerifier.address, [
                     'http://localhost:8080/{sender}/{data}',
-                ])
+                ],
+                ethers.utils.toUtf8Bytes(''))
                 .then(res => {
                     expect.fail('Should have thrown an error');
                 })
@@ -140,11 +143,12 @@ describe('ERC3668Resolver Test', () => {
         it('reverts if resolverAddress does not support resolveWithProofInterface', async () => {
             await erc3668Resolver
                 .connect(alice)
-                .setVerifierForDomain(
+                .setVerifierForName(
                     ethers.utils.namehash('alice.eth'),
                     // Alice is an EOA, so this is not a valid resolver
                     bedrockProofVerifier.address,
                     ['http://localhost:8080/{sender}/{data}'],
+                    ethers.utils.toUtf8Bytes(''),
                 )
                 .then(res => {
                     expect.fail('Should have thrown an error');
@@ -156,11 +160,12 @@ describe('ERC3668Resolver Test', () => {
         it('reverts if url string is empty', async () => {
             await erc3668Resolver
                 .connect(alice)
-                .setVerifierForDomain(
+                .setVerifierForName(
                     ethers.utils.namehash('alice.eth'),
                     // Alice is an EOA, so this is not a valid resolver
                     bedrockCcipVerifier.address,
                     [],
+                    ethers.utils.toUtf8Bytes(''),
                 )
                 .then(res => {
                     expect.fail('Should have thrown an error');
@@ -170,11 +175,12 @@ describe('ERC3668Resolver Test', () => {
                 });
         });
         it('adds verifier + event contains node, url, and resolverAddress', async () => {
-            const tx = await erc3668Resolver.connect(alice).setVerifierForDomain(
+            const tx = await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const receipt = await tx.wait();
@@ -188,11 +194,12 @@ describe('ERC3668Resolver Test', () => {
             expect(resolverAddress).to.equal(bedrockCcipVerifier.address);
         });
         it('adds verifier + event contains node, url, and resolverAddress for NameWrapperProfile', async () => {
-            const tx = await erc3668Resolver.connect(alice).setVerifierForDomain(
+            const tx = await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('namewrapper.alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const receipt = await tx.wait();
@@ -241,11 +248,12 @@ describe('ERC3668Resolver Test', () => {
             );
         });
         it('returns Offchain lookup for parent domain', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -306,11 +314,12 @@ describe('ERC3668Resolver Test', () => {
             expect(extraData).to.equal(iface.encodeFunctionData('resolveWithContext', [name, data, alice.address]));
         });
         it('returns Offchain lookup for sub domain', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -346,11 +355,12 @@ describe('ERC3668Resolver Test', () => {
             );
         });
         it('returns Offchain lookup for namewrapper', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('namewrapper.alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -386,9 +396,11 @@ describe('ERC3668Resolver Test', () => {
         it('Revert if ccip verifier returns no callback selector', async () => {
             await erc3668Resolver
                 .connect(alice)
-                .setVerifierForDomain(ethers.utils.namehash('alice.eth'), verifierWithoutCallbackSelector.address, [
+                .setVerifierForName(ethers.utils.namehash('alice.eth'), verifierWithoutCallbackSelector.address, [
                     'http://localhost:8080/{sender}/{data}',
-                ]);
+                ],
+                ethers.utils.toUtf8Bytes(''),
+                );
 
             const iface = new ethers.utils.Interface([
                 'function addr(bytes32)',
@@ -411,11 +423,12 @@ describe('ERC3668Resolver Test', () => {
             expect(errorString).to.equal('No callback selector found');
         });
         it('Revert if resolveWithProofCall fails', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 bedrockCcipVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -438,12 +451,13 @@ describe('ERC3668Resolver Test', () => {
 
             expect(errorString).to.equal('staticcall to verifier failed');
         });
-        it('ResolveWithProf for parentDomain using verifier ', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+        it('ResolveWithProf for parentName using verifier ', async () => {
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 signatureVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -464,11 +478,12 @@ describe('ERC3668Resolver Test', () => {
             expect(ethers.utils.getAddress(decodedResponse)).to.equal(alice.address);
         });
         it('ResolveWithProf for sub domain using verifier ', async () => {
-            await erc3668Resolver.connect(alice).setVerifierForDomain(
+            await erc3668Resolver.connect(alice).setVerifierForName(
                 ethers.utils.namehash('alice.eth'),
                 // Alice is an EOA, so this is not a valid resolver
                 signatureVerifier.address,
                 ['http://localhost:8080/{sender}/{data}'],
+                ethers.utils.toUtf8Bytes(''),
             );
 
             const iface = new ethers.utils.Interface([
@@ -497,9 +512,11 @@ describe('ERC3668Resolver Test', () => {
 
             await erc3668Resolver
                 .connect(alice)
-                .setVerifierForDomain(ethers.utils.namehash('alice.eth'), bedrockCcipVerifier.address, [
+                .setVerifierForName(ethers.utils.namehash('alice.eth'), bedrockCcipVerifier.address, [
                     'http://localhost:8080/{sender}/{data}',
-                ]);
+                ], 
+                ethers.utils.toUtf8Bytes(''),
+                );
             const [name, coinType, graphqlUrl, storageType, storageLocation, context] = await erc3668Resolver.metadata(
                 dnsEncode('alice.eth'),
             );

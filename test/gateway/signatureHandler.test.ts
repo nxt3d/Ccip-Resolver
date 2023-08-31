@@ -93,9 +93,10 @@ describe('Signature Handler', () => {
 
         await erc3668Resolver
             .connect(vitalik)
-            .setVerifierForDomain(ethers.utils.namehash('vitalik.eth'), signatureCcipVerifier.address, [
-                'http://test/{sender}/{data}',
-            ]);
+            .setVerifierForName(ethers.utils.namehash('vitalik.eth'), signatureCcipVerifier.address, [
+                'http://test/{sender}/{data}',],
+                ethers.utils.toUtf8Bytes(''),
+                );
 
         const { callData } = await getGateWayUrl('vitalik.eth', 'my-record', erc3668Resolver);
 
