@@ -222,17 +222,19 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         // Remove the last two labels by looping through the name and copying the bytes
         // until we get to the second last offset.
 
-        // reset offset to the start of the name.
         uint256 i;
         bytes memory newName = new bytes(thirdLastOffset + new2LD.length);
 
         /**
-         * Make a new name that is the combination of the name without the 2LD and TLD
-         * and the new2LD */
+         * Make a new name that is the combination of "name" without the 2LD and TLD
+         * and the new2LD. For example if name is sub.abc.eththe and the new2LD is 1234.unruggable 
+         * then the newName would be sub.1234.unruggable. 
+         */
 
         while (i < newName.length) {
 
-            if (i <= thirdLastOffset) {
+            // Read the bytes of name until we get to thirdLastOffset - 1 (use i+1 to avoid 0-1)
+            if (i + 1 <= thirdLastOffset) {
                 newName[i] = name[i];
             } else {
                 newName[i] = new2LD[i - thirdLastOffset];
