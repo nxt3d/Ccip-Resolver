@@ -293,7 +293,7 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
      * @return newName The new name with the last two labels replaced with the new 2LD, e.g sub.1234.unruggable
      */
 
-    function replace2LDTLD(bytes memory name, bytes memory new2LD) internal pure returns (bytes memory) {
+    function replace2LD(bytes memory name, bytes memory new2LD) internal pure returns (bytes memory) {
 
         uint256 offset = 0;
         uint256 lastOffset = 0;
