@@ -195,57 +195,6 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         return resolveWithProofResponse;
     }
 
-    // A function called remove 2LD. 
-    function replace2LDTLD(bytes memory name, bytes memory new2LD) internal pure returns (bytes memory) {
-
-        // Step through each label and save the last two labels.
-        uint256 offset = 0;
-        uint256 lastOffset = 0;
-        uint256 secondLastOffset = 0;
-        uint256 thirdLastOffset = 0;
-
-        // The length of the label.
-        uint256 len;
-
-        // Get the offsets of the last two labels.
-        while (offset < name.length-1) {
-
-            len = uint256(uint8(name[offset]));
-            thirdLastOffset = secondLastOffset;
-            secondLastOffset = lastOffset;
-            lastOffset = offset + len + 1;
-
-            // jump to the next label.
-            offset = lastOffset;
-        }   
-
-        // Remove the last two labels by looping through the name and copying the bytes
-        // until we get to the second last offset.
-
-        uint256 i;
-        bytes memory newName = new bytes(thirdLastOffset + new2LD.length);
-
-        /**
-         * Make a new name that is the combination of "name" without the 2LD and TLD
-         * and the new2LD. For example if name is sub.abc.eththe and the new2LD is 1234.unruggable 
-         * then the newName would be sub.1234.unruggable. 
-         */
-
-        while (i < newName.length) {
-
-            // Read the bytes of name until we get to thirdLastOffset - 1 (use i+1 to avoid 0-1)
-            if (i + 1 <= thirdLastOffset) {
-                newName[i] = name[i];
-            } else {
-                newName[i] = new2LD[i - thirdLastOffset];
-            }
-            i++;
-        }
-
-        // Return the name without the last two labels.
-        return newName;
-    }
-
     /**
      * @notice Get metadata about the CCIP Resolver
      * @dev This function provides metadata about the CCIP Resolver, including its name, coin type, GraphQL URL, storage type, and encoded information.
@@ -331,6 +280,68 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         if (nodeOwner == address(nameWrapper)) {
             nodeOwner = nameWrapper.ownerOf(uint256(node));
         }
+    }
+
+    /**
+     * @notice Replace the last two labels of a name with a new 2LD.
+     * @dev This function is used to replace the last two labels of a name with a new 2LD. 
+     *      For example, if the name is sub.abc.eth and the new2LD is 1234.unruggable then 
+     *      the newName would be sub.1234.unruggable. If there is no subname, then the
+     *      newName would be just be 1234.unruggable. 
+     * @param name The domain name in bytes (DNS Encoded), e.g. sub.abc.eth
+     * @param new2LD The new 2LD to replace the last two labels of the name, e.g. 1234.unruggable (DNS Encoded)
+     * @return newName The new name with the last two labels replaced with the new 2LD, e.g sub.1234.unruggable
+     */
+
+    function replace2LDTLD(bytes memory name, bytes memory new2LD) internal pure returns (bytes memory) {
+
+        uint256 offset = 0;
+        uint256 lastOffset = 0;
+        uint256 secondLastOffset = 0;
+        uint256 thirdLastOffset = 0;
+
+        // The length of the label.
+        uint256 len;
+
+        // Get the offsets of the last two labels.
+        while (offset < name.length-1) {
+
+            len = uint256(uint8(name[offset]));
+            thirdLastOffset = secondLastOffset;
+            secondLastOffset = lastOffset;
+            lastOffset = offset + len + 1;
+
+            // jump to the next label.
+            offset = lastOffset;
+        }   
+
+        /**
+         * Remove the last two labels by looping through the name and copying the bytes
+         * until we get to the third-to-last offset - 1.
+         */
+
+        uint256 i;
+        bytes memory newName = new bytes(thirdLastOffset + new2LD.length);
+
+        /**
+         * Make a new name that is the combination of "name" without the 2LD and TLD
+         * and the new2LD. For example if name is sub.abc.eth and the new2LD is 1234.unruggable 
+         * then the newName would be sub.1234.unruggable. 
+         */
+
+        while (i < newName.length) {
+
+            // Read the bytes of name until we get to thirdLastOffset - 1 (use i+1 to avoid 0-1)
+            if (i + 1 <= thirdLastOffset) {
+                newName[i] = name[i];
+            } else {
+                newName[i] = new2LD[i - thirdLastOffset];
+            }
+            i++;
+        }
+
+        // Return the new name.
+        return newName;
     }
 
     /*
