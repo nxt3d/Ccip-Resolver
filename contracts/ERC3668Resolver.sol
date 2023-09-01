@@ -160,13 +160,17 @@ contract ERC3668Resolver is IExtendedResolver, IMetadataResolver, SupportsInterf
         // Get the L2 2LD name that we are using. 
         bytes memory nameOnL2 = _ccipVerifier.nameOnL2;
 
-        // If the nameOnL2 is set.
-        if (nameOnL2.length < 0) {
+        /**
+         * On L2 we are using a special 2LD for example instead of 'name.eth' of the name sub.name.eth, we use 
+         * for example 1234.unruggable, so the name on L2 is saved in the registry as sub.1234.unruggable. 
+         * We need to do this, because we don't pove ownership of the L1 name on L2, instead we use a random name
+         * 2LD that can be assocaited with the L1 name, which can then be used to resolve subnames on L2.
+         */
 
-            // Remove that last two labels of the name in DNS format. 
+        if (nameOnL2.length > 0) {
 
-
-
+            // Change the 2LD of the name to the 2LD saved as nameOnL2.
+            name = replace2LD(name, nameOnL2); 
         }
 
         /*
